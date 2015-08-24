@@ -1,0 +1,141 @@
+# Makefile pour EZ-Draw
+#
+# 21/06/2011 - Edouard.Thiel@lif.univ-mrs.fr
+
+# Variables pour systemes Unix/X11 (linux, Mac OS, etc)
+SHELL  = /bin/bash
+CC     = gcc
+CFLAGS = -Wall -W -ansi -pedantic -g
+LIBS   = -L/usr/X11R6/lib -lX11 -lXext
+RM     = rm -f
+
+# Rajoutez vos executables a la fin de EXECS ou EXECS_M
+# (dans EXEC_M, les programmes seront compile's avec -lm)
+#
+EXECS = demo0 demo1 demo2 demo3 demo4 demo5 demo6 demo7 demo8a \
+        jeu-sudoku jeu-nim jeu-vie jeu-taquin jeu-bubblet
+
+EXECS_M = demo8b jeu-laby jeu-ezen jeu-heziom jeu-tangram
+
+.c.o :
+	$(CC) -c $(CFLAGS) $*.c
+
+help ::
+	@echo "Options du make : help all ln clean distclean"
+
+all :: $(EXECS) $(EXECS_M)
+
+
+# Cette double dependance un peu speciale est de la syntaxe GNU-make ;
+# elle est equivalente a
+#     demo0 : demo0.o ez-draw.o
+#     demo1 : demo1.o ez-draw.o
+#     ...
+#     $(EXECS) :
+#	      $(CC) -o $@ $^ $(LIBS)
+
+$(EXECS) : % : %.o ez-draw.o
+	$(CC) -o $@ $^ $(LIBS)
+
+$(EXECS_M) : % : %.o ez-draw.o
+	$(CC) -o $@ $^ $(LIBS) -lm
+
+clean ::
+	$(RM) *.o core
+
+distclean :: clean
+	$(RM) *% *~ $(EXECS) $(EXECS_M)
+
+# Cette cible cree un lien $HOME/ez-draw vers votre repertoire d'installation
+ln ::
+	@P=`pwd` ; N="$${HOME}/ez-draw" ;\
+	if [ -h "$$N" ]; then mv -f "$$N" "$$N.old" ; fi ;\
+	echo "ln -s \"$$P\" \"$$N\"" ; ln -s "$$P" "$$N" 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#------------------------------------------------------------------------------
+#                       C I B L E S   P R I V E E S
+#------------------------------------------------------------------------------
+
+
+cub :: distclean
+	@N=`pwd` ; N=`basename "$$N"` ;\
+	D=`date "+%Y-%m-%d- %H" | awk '{ printf "%s", $$1 ; printf "%c", $$2+97 }'` ;\
+	cd .. ; P=`pwd` ; F="/cub/maj/$${N}_$${D}.tgz" ;\
+	tar cvfz $$F $$N ;\
+	echo "DONE: tar cvfz $$F $$N" ;\
+	ls -l $$F ; df /cub ; echo "done"
+
+tar :: distclean
+	@N=`pwd` ; N=`basename "$$N"` ;\
+	cd .. ; P=`pwd` ;\
+	tar cvfz $$N.tgz $$N ;\
+	echo "DONE: tar cvfz $$P/$$N.tgz $$N" ;\
+	ls -l $$P/$$N.tgz
+
+sap :: distclean
+	@N=`pwd` ; N=`basename "$$N"` ;\
+	D=`date "+%Y-%m-%d- %H" | awk '{ printf "%s", $$1 ; printf "%c", $$2+97 }'` ;\
+	cd .. ; P=`pwd` ; F="$${N}_$${D}.tgz" ;\
+	tar cvfz $$F $$N ;\
+	echo "DONE: tar cvfz $$F $$N" ;\
+        echo "Copying $$F to saphir2 ..." ;\
+        scp "$$F" "Edouard.Thiel@saphir2.lidil.univ-mrs.fr:PROG/EZ-DRAW" ;\
+
+web :: tar
+	@P=`pwd` ; N=`basename "$$P"` ;	t="$${HOME}/public_html" ;\
+	if [ -f "$$t/index.html" ]; then \
+	  echo "Updating \"$$t ...\"" ;\
+	  cp -f "../$$N.tgz" "$$t" ;\
+	  ( cd "$$t" ;\
+	    if [ -d "$$N" ]; then rm -rf "$$N" ; fi ;\
+	    tar xvfz "$$N.tgz" ;\
+	    if [ -h "ez-draw" ]; then rm -f "ez-draw" ; fi ;\
+	    ln -s "$$N" "ez-draw" ;\
+	    ./GenWeb.sh --gen "ez-draw/index.html" ;\
+	  ) ;\
+          echo "Updating web ..." ;\
+          scp -r "$${t}/ez-draw" "$${t}/$$N.tgz" "Edouard.Thiel@saphir2:public_html/" ;\
+	fi ;\
+	echo "done"
+
+mime :: distclean
+	file --mime-encoding *
+
+BOCAL_PATH = $(HOME)/bocal
+TRANS = "$(BOCAL_PATH)/src/bocal"
+DOC1 = ez-tutorial
+
+doc :: $(DOC1).html
+
+$(DOC1).html : $(DOC1).boc
+	$(TRANS) $(DOC1).boc --html $(DOC1).html
+
+docclean ::
+	rm $(DOC1).html
